@@ -18,11 +18,9 @@ find_package(QCoro5 COMPONENTS Core REQUIRED)
 find_package(AppStreamQt REQUIRED)
 find_package(PackageKitQt5 REQUIRED)
 
-set(BIN_NAME dde-application-wizard)
+set(BIN_NAME dde-application-wizard-daemon-compat)
 
-qt_add_dbus_adaptor(DBUS_ADAPTER_FILES dbus/org.deepin.dde.daemon.Launcher1.xml dbus/launcher1compat.h Launcher1Compat)
-
-add_executable(${BIN_NAME})
+add_subdirectory(dbus)
 
 set(SOURCE_FILES
     main.cpp
@@ -30,10 +28,22 @@ set(SOURCE_FILES
     dbus/launcher1compat.cpp dbus/launcher1compat.h
 )
 
+qt_add_dbus_adaptor(DBUS_ADAPTER_FILES dbus/org.deepin.dde.daemon.Launcher1.xml dbus/launcher1compat.h Launcher1Compat)
+
+set(TRANSLATION_FILES
+    translations/dde-application-wizard.ts
+    translations/dde-application-wizard_zh_CN.ts
+)
+
+qt_create_translation(TRANSLATED_FILES ${SOURCE_FILES} ${TRANSLATION_FILES})
+
+add_executable(${BIN_NAME})
+
 target_sources(${BIN_NAME}
 PRIVATE
     ${SOURCE_FILES}
     ${DBUS_ADAPTER_FILES}
+    ${TRANSLATED_FILES}
 )
 
 target_link_libraries(${BIN_NAME} PRIVATE
@@ -42,3 +52,6 @@ target_link_libraries(${BIN_NAME} PRIVATE
     QCoro::Core
     PK::packagekitqt5
 )
+
+install(TARGETS ${BIN_NAME} DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
+install(FILES ${TRANSLATED_FILES} DESTINATION ${CMAKE_INSTALL_DATADIR}/${BIN_NAME}/translations)
