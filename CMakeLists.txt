@@ -20,6 +20,12 @@ find_package(PackageKitQt5 REQUIRED)
 
 set(BIN_NAME dde-application-wizard-daemon-compat)
 
+include(FeatureSummary)
+include(GNUInstallDirs)
+
+feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
+
+add_subdirectory(systemd)
 add_subdirectory(dbus)
 
 set(SOURCE_FILES
