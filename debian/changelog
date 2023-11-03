@@ -1,3 +1,9 @@
+dde-application-wizard (0.1.0) unstable; urgency=medium
+
+  * Release 0.1.0
+
+ -- He YuMing <heyuming@deepin.org>     Fri, 03 Nov 2023 13:24:51 +0800
+
 dde-application-wizard (0.0.0) UNRELEASED; urgency=medium
 
   * Initial release
