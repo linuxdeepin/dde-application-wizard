@@ -38,7 +38,13 @@ qt_add_dbus_adaptor(DBUS_ADAPTER_FILES dbus/org.deepin.dde.daemon.Launcher1.xml 
 
 set(TRANSLATION_FILES
     translations/dde-application-wizard.ts
+    translations/dde-application-wizard_es.ts
+    translations/dde-application-wizard_hu.ts
+    translations/dde-application-wizard_pl.ts
+    translations/dde-application-wizard_ru.ts
     translations/dde-application-wizard_zh_CN.ts
+    translations/dde-application-wizard_zh_TW.ts
+    translations/dde-application-wizard_zh_HK.ts
 )
 
 qt_create_translation(TRANSLATED_FILES ${SOURCE_FILES} ${TRANSLATION_FILES})
