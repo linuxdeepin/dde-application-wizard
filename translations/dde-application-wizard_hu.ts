@@ -6,7 +6,7 @@
     <message>
         <location filename="../dbus/launcher1compat.cpp" line="41"/>
         <source>%1 removed successfully</source>
-        <translation type="unfinished"></translation>
+        <translation>%1 sikeresen eltávolítva</translation>
     </message>
     <message>
         <location filename="../dbus/launcher1compat.cpp" line="43"/>
