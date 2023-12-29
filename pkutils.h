@@ -8,6 +8,7 @@
 #include <transaction.h>
 #include <tuple>
 
+#include <QDebug>
 #include <QString>
 #include <QCoroTask>
 
