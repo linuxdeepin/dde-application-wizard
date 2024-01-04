@@ -1,3 +1,9 @@
+dde-application-wizard (0.1.3) unstable; urgency=medium
+
+  * Adjust translation install location
+
+ -- Wang Zichong <wangzichong@deepin.org>     Thu, 04 Jan 2024 10:48:00 +0800
+
 dde-application-wizard (0.1.2) unstable; urgency=medium
 
   * Fix translation not loaded.
