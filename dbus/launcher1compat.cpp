@@ -183,7 +183,7 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
     }
 
     // Check and do uninstallation
-    if (desktopFilePath.contains("/persistent/linglong")) {
+    if (desktopFilePath.contains("/persistent/linglong") || desktopFilePath.contains("/var/lib/linglong")) {
         // Uninstall Linglong Bundle
         bool succ = uninstallLinglongBundle(desktopEntry);
         if (!succ) {
