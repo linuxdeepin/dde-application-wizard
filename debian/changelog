@@ -1,3 +1,9 @@
+dde-application-wizard (0.1.4) unstable; urgency=medium
+
+  * Fix cannot install linglong app (linuxdeepin/developer-center#6655)
+
+ -- Wang Zichong <wangzichong@deepin.org>     Thu, 16 Jan 2024 13:40:00 +0800
+
 dde-application-wizard (0.1.3) unstable; urgency=medium
 
   * Adjust translation install location
