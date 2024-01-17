@@ -44,7 +44,7 @@ void sendNotification(const QString & displayName, bool successed)
     }
 
     DUtil::DNotifySender notifySender(msg);
-    notifySender = notifySender.appName("deepin-app-store").appIcon("application-default-icon");
+    notifySender = notifySender.appName("deepin-app-store").appIcon("application-default-icon").timeOut(5000);
     notifySender.call();
 }
 
