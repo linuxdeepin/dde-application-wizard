@@ -1,3 +1,9 @@
+dde-application-wizard (0.1.5) unstable; urgency=medium
+
+  * Fix notification of uninstall isn't disappear
+
+ -- wangfei <wangfei@deepin.org>  Wed, 17 Jan 2024 15:13:13 +0800
+
 dde-application-wizard (0.1.4) unstable; urgency=medium
 
   * Fix cannot install linglong app (linuxdeepin/developer-center#6655)
