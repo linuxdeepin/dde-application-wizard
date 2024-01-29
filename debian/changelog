@@ -1,3 +1,9 @@
+dde-application-wizard (0.1.6) unstable; urgency=medium
+
+  * fix: add runtime dependency
+
+ -- YuMing He <heyuming@deepin.org>  Mon, 29 Jan 2024 18:01:08 +0800
+
 dde-application-wizard (0.1.5) unstable; urgency=medium
 
   * Fix notification of uninstall isn't disappear
