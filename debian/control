@@ -25,7 +25,8 @@ Package: dde-application-wizard-daemon-compat
 Architecture: any
 Depends:
  ${shlibs:Depends},
- ${misc:Depends}
+ ${misc:Depends},
+ packagekit
 Conflicts: dde-application-manager (< 1.1.0)
 Description: D-Bus compat module to provide app uninstall support
  This package provides the app uninstallation related D-Bus APIs which
