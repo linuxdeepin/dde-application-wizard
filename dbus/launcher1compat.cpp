@@ -159,7 +159,7 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
     procfile.close();
     qDebug() << cmdline;
 #ifndef QT_DEBUG
-    if (!QString(cmdline).endsWith(BINDIR_PREFIX + QStringLiteral("dde-launcher")) &&
+    if (!QString(cmdline).endsWith(BINDIR_PREFIX + QStringLiteral("dde-shell")) &&
         !QString(cmdline).endsWith(BINDIR_PREFIX + QStringLiteral("dde-launchpad"))) {
         qWarning() << cmdline << " has no right to uninstall " << desktop;
         return;
