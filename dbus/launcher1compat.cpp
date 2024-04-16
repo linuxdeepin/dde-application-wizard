@@ -69,7 +69,7 @@ void Launcher1Compat::uninstallPackageKitPackage(const QString & pkgDisplayName,
         QDBusConnection::systemBus());
     if (lastoreDbus.isValid()) {
         qDebug() << "Uninstall" << nativePackageName << "via org.deepin.dde.Lastore1 service";
-        QDBusReply<QDBusObjectPath> reply = lastoreDbus.call(QDBus::Block, "RemovePackage", "appwiz-remove-pkid:" + pkPackageId, nativePackageName);
+        QDBusReply<QDBusObjectPath> reply = lastoreDbus.call(QDBus::Block, "RemovePackage", pkgDisplayName, nativePackageName);
         if (!reply.isValid() || reply.value().path().isEmpty()) {
             qWarning() << "RemovePackage failed: " << reply.error();
             return;
