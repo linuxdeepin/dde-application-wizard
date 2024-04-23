@@ -1,3 +1,9 @@
+dde-application-wizard (0.1.8) unstable; urgency=medium
+
+  * Fix #7910
+    Fix desktop shortcut not removed after uninstallation
+ -- Yutao Meng <mengyutao@deepin.org>  Tue, 23 Apr 2024 15:34:00 +0800
+
 dde-application-wizard (0.1.7) unstable; urgency=medium
 
   * Update translation for Russian language.
