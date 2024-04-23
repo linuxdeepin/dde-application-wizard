@@ -58,40 +58,6 @@ bool uninstallLinglongBundle(const DDesktopEntry & entry)
     return retCode == 0;
 }
 
-void Launcher1Compat::uninstallPackageKitPackage(const QString & pkgDisplayName, const QString & pkPackageId)
-{
-    const QLatin1String Lastore1Service("org.deepin.dde.Lastore1");
-    QString nativePackageName = PackageKit::Daemon::packageName(pkPackageId);
-    QDBusInterface lastoreDbus = QDBusInterface(
-        Lastore1Service,
-        QLatin1String("/org/deepin/dde/Lastore1"),
-        QLatin1String("org.deepin.dde.Lastore1.Manager"),
-        QDBusConnection::systemBus());
-    if (lastoreDbus.isValid()) {
-        qDebug() << "Uninstall" << nativePackageName << "via org.deepin.dde.Lastore1 service";
-        QDBusReply<QDBusObjectPath> reply = lastoreDbus.call(QDBus::Block, "RemovePackage", pkgDisplayName, nativePackageName);
-        if (!reply.isValid() || reply.value().path().isEmpty()) {
-            qWarning() << "RemovePackage failed: " << reply.error();
-            return;
-        }
-
-        QString servicePath = reply.value().path();
-
-        QDBusConnection::systemBus().disconnect(Lastore1Service, servicePath, "org.freedesktop.DBus.Properties",
-                                                "PropertiesChanged","sa{sv}as", this, SLOT(onHandleLastoreUninstall(const QDBusMessage &)));
-        QDBusConnection::systemBus().connect(Lastore1Service, servicePath, "org.freedesktop.DBus.Properties",
-                                             "PropertiesChanged","sa{sv}as", this, SLOT(onHandleLastoreUninstall(const QDBusMessage &)));
-    } else {
-        qDebug() << "Uninstall" << pkPackageId << "via PackageKit";
-        PKUtils::removePackage(pkPackageId).then([=](){
-            sendNotification(pkgDisplayName, true);
-        }, [=](const std::exception & e){
-            sendNotification(pkgDisplayName, false);
-            PKUtils::PkError::printException(e);
-        });
-    }
-}
-
 void postUninstallCleanUp(const QString & desktopId)
 {
     // Remove the shortcut that we created at user's desktop
@@ -110,6 +76,20 @@ void postUninstallCleanUp(const QString & desktopId)
 
     // Remove the pinned dock entry
     // TODO: the legacy dde-application-manager didn't do this
+}
+
+void Launcher1Compat::uninstallPackageKitPackage(const QString & pkgDisplayName, const QString & pkPackageId)
+{
+    qDebug() << "Uninstall" << pkPackageId << "via PackageKit";
+    PKUtils::removePackage(pkPackageId).then([=](){
+        sendNotification(pkgDisplayName, true);
+        QFileInfo fi(m_desktopFilePath);
+        // FIXME: THIS IS NOT DESKTOP ID
+        postUninstallCleanUp(fi.fileName());
+    }, [=](const std::exception & e){
+        sendNotification(pkgDisplayName, false);
+        PKUtils::PkError::printException(e);
+    });
 }
 
 void Launcher1Compat::onHandleLastoreUninstall(const QDBusMessage &message)
