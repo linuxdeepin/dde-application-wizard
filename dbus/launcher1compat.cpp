@@ -146,19 +146,26 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
     }
 #endif // !QT_DEBUG
 
-    m_desktopFilePath = desktop;
+    // Adapt to deepin-deb-fix
+    if (desktop.startsWith("/usr/share/deepin-desktop-fix/applications/")) {
+        QFileInfo fixDesktopFileInfo(desktop);
+        m_desktopFilePath = "/usr/share/applications/" + fixDesktopFileInfo.fileName();
+        qDebug() << "Find fix desktop file: " << desktop << ", source file: " << m_desktopFilePath;
+    } else {
+        m_desktopFilePath = desktop;
+    }
 
     // Check if passed file is valid
-    QFileInfo desktopFileInfo(desktop);
+    QFileInfo desktopFileInfo(m_desktopFilePath);
     if (!desktopFileInfo.exists()) {
-        qDebug() << "File" << desktop << "doesn't exist.";
+        qDebug() << "File" << m_desktopFilePath << "doesn't exist.";
         return;
     }
 
-    QString desktopFilePath(desktopFileInfo.isSymLink() ? desktopFileInfo.symLinkTarget() : desktop);
+    QString desktopFilePath(desktopFileInfo.isSymLink() ? desktopFileInfo.symLinkTarget() : m_desktopFilePath);
     DDesktopEntry desktopEntry(desktopFilePath);
     if (desktopEntry.status() != DDesktopEntry::NoError) {
-        qDebug() << "Desktop file" << desktop << "is invalid.";
+        qDebug() << "Desktop file" << m_desktopFilePath << "is invalid.";
         return;
     }
 
