@@ -72,4 +72,5 @@ target_link_libraries(${BIN_NAME} PRIVATE
 )
 
 install(TARGETS ${BIN_NAME} DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
+install(FILES polkit-1/rules.d/org.deepin.dde.application-wizard.rules DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/rules.d)
 install(FILES ${TRANSLATED_FILES} DESTINATION ${CMAKE_INSTALL_DATADIR}/dde-application-wizard/translations)
