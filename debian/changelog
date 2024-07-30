@@ -1,3 +1,11 @@
+dde-application-wizard (0.1.10) unstable; urgency=medium
+
+  * Revert "feat: Adapt to uninstall of applications patched by deepin-deb-fix"
+    Skip authentication when removing packages by application-wizard
+    Translations update from Hosted Weblate
+
+ -- Yutao Meng <mengyutao@deepin.org>  Tue, 30 Jul 2024 16:17:38 +0800
+
 dde-application-wizard (0.1.9) unstable; urgency=medium
 
   * feat: Adapt to uninstall of applications patched by deepin-deb-fix
