@@ -12,11 +12,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON) # ensure adapter class can include launcheri1compat.h
 
-find_package(Qt5 REQUIRED COMPONENTS Core LinguistTools)
-find_package(Dtk REQUIRED COMPONENTS Core Gui)
-find_package(QCoro5 COMPONENTS Core REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Core LinguistTools)
+find_package(Dtk6 REQUIRED COMPONENTS Core Gui)
+find_package(QCoro6 COMPONENTS Core REQUIRED)
 find_package(AppStreamQt REQUIRED)
-find_package(PackageKitQt5 REQUIRED)
+find_package(PackageKitQt6 REQUIRED)
 
 set(BIN_NAME dde-application-wizard-daemon-compat)
 
@@ -65,10 +65,10 @@ PRIVATE
 )
 
 target_link_libraries(${BIN_NAME} PRIVATE
-    Dtk::Core
-    Dtk::Gui
+    Dtk6::Core
+    Dtk6::Gui
     QCoro::Core
-    PK::packagekitqt5
+    PK::packagekitqt6
 )
 
 install(TARGETS ${BIN_NAME} DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
