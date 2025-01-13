@@ -33,3 +33,6 @@ Files: *.deepin.dde.*.xml */org.desktopspec.*.xml
 Copyright: UnionTech Software Technology Co., Ltd.
 License: GPL-3.0-or-later
 
+Files: toolGenerate/**/*
+Copyright: None
+License: CC0-1.0
