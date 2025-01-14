@@ -1,3 +1,9 @@
+dde-application-wizard (0.1.11) unstable; urgency=medium
+
+  * Fix uninstall on ostree-booted environment
+
+ -- Wang Zichong <wangzichong@deepin.org>  Tue, 14 Jan 2025 21:00:00 +0800
+
 dde-application-wizard (0.1.10) unstable; urgency=medium
 
   * Revert "feat: Adapt to uninstall of applications patched by deepin-deb-fix"
