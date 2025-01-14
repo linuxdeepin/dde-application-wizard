@@ -23,6 +23,11 @@ Files: *.qrc
 Copyright: None
 License: CC0-1.0
 
+# polkit policy
+Files: polkit-1/actions/*.policy
+Copyright: None
+License: CC0-1.0
+
 # translations
 Files: translations/*.ts
 Copyright: UnionTech Software Technology Co., Ltd.

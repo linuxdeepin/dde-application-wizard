@@ -92,31 +92,26 @@ void Launcher1Compat::uninstallPackageKitPackage(const QString & pkgDisplayName,
     });
 }
 
-void Launcher1Compat::onHandleLastoreUninstall(const QDBusMessage &message)
+void Launcher1Compat::uninstallPackageByScript(const QString & pkgDisplayName, const QString & packageDesktopFilePath)
 {
-    QList<QVariant> arguments = message.arguments();
+    // call `/usr/libexec/dde-appwiz-uninstaller.sh <packageDesktopFilePath>` and check the return code.
+    qDebug() << "Calling dde-appwiz-uninstaller.sh to uninstall" << pkgDisplayName << packageDesktopFilePath << "via script";
+    QProcess process;
+    process.start("/usr/libexec/dde-appwiz-uninstaller.sh", QStringList{packageDesktopFilePath});
+    process.waitForFinished();
 
-    if (3 != arguments.count())
-        return;
+    QString standardOutput = process.readAllStandardOutput();
+    QString standardError = process.readAllStandardError();
+    qDebug() << "stdout:" << standardOutput;
+    qDebug() << "stderr:" << standardError;
 
-    QVariantMap changedProps = qdbus_cast<QVariantMap>(arguments.at(1).value<QDBusArgument>());
-    const QStringList keys = changedProps.keys();
-
-    QString status;
-    if (keys.contains("Status")) {
-        status = changedProps["Status"].toString();
-    }
-
-#ifdef QT_DEBUG
-    qInfo() <<  "changedProps: " << changedProps << ", status: " << status;
-#endif
-    if (status == "succeed" || status == "end") {
+    if (process.exitCode() != 0) {
+        sendNotification(pkgDisplayName, false);
+    } else {
+        sendNotification(pkgDisplayName, true);
         QFileInfo fi(m_desktopFilePath);
         // FIXME: THIS IS NOT DESKTOP ID
         postUninstallCleanUp(fi.fileName());
-        emit UninstallSuccess(m_desktopFilePath);
-    } else if (status == "failed") {
-        emit UninstallFailed(m_desktopFilePath, QString());
     }
 }
 
@@ -129,19 +124,13 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
     //       Thus this checking will be no longer necessary. We still need this check since we are
     //       still using lastore to uninstall package if it exists.
     QString servicePid = QString::number(QDBusConnection::sessionBus().interface()->servicePid(message().service()));
-    QString procfs = QLatin1String("/proc/%1/cmdline").arg(servicePid);
-    QFile procfile(procfs);
-    if (!procfile.exists() || !procfile.open(QFile::ReadOnly)) {
-        qDebug() << "Cannot verify caller";
-        return;
-    }
-    QString cmdline(procfile.readAll());
-    procfile.close();
-    qDebug() << cmdline;
+    QString procfs = QLatin1String("/proc/%1/exe").arg(servicePid);
+    QFileInfo procfile(procfs);
+    QString realPath = procfile.canonicalFilePath();
 #ifndef QT_DEBUG
-    if (!QString(cmdline).endsWith(BINDIR_PREFIX + QStringLiteral("dde-shell")) &&
-        !QString(cmdline).endsWith(BINDIR_PREFIX + QStringLiteral("dde-launchpad"))) {
-        qWarning() << cmdline << " has no right to uninstall " << desktop;
+    if (!realPath.endsWith(BINDIR_PREFIX + QStringLiteral("dde-shell")) &&
+        !realPath.endsWith(BINDIR_PREFIX + QStringLiteral("dde-launchpad"))) {
+        qWarning() << realPath << " has no right to uninstall " << desktop;
         return;
     }
 #endif // !QT_DEBUG
@@ -177,22 +166,28 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
             emit UninstallSuccess(desktopFilePath);
             sendNotification(desktopEntry.name(), true);
         }
+    // TODO: check if it's a flatpak or snap bundle and do the uninstallation?
     } else {
         m_packageDisplayName = desktopEntry.name();
-        // TODO: check if it's a flatpak or snap bundle and do the uninstallation?
+
         // Uninstall regular package via PackageKit or deepin-store
-        PKUtils::searchFiles(desktopFilePath, PackageKit::Transaction::FilterInstalled).then([this](const PKUtils::PkPackages packages) {
-            if (packages.size() == 0) {
-                qDebug() << "No matching package found";
-                return;
-            }
-            for (const PKUtils::PkPackage & pkg : packages) {
-                QString pkgId;
-                std::tie(std::ignore, pkgId, std::ignore) = pkg;
-                uninstallPackageKitPackage(m_packageDisplayName, pkgId);
-            }
-        }, [](const std::exception & e){
-            PKUtils::PkError::printException(e);
-        });
+        if (QFile::exists("/run/ostree-booted")) {
+            uninstallPackageByScript(m_packageDisplayName, desktopFilePath);
+        } else {
+            // call PackageKit to uninstall
+            PKUtils::searchFiles(desktopFilePath, PackageKit::Transaction::FilterInstalled).then([this](const PKUtils::PkPackages packages) {
+                if (packages.size() == 0) {
+                    qDebug() << "No matching package found";
+                    return;
+                }
+                for (const PKUtils::PkPackage & pkg : packages) {
+                    QString pkgId;
+                    std::tie(std::ignore, pkgId, std::ignore) = pkg;
+                    uninstallPackageKitPackage(m_packageDisplayName, pkgId);
+                }
+            }, [](const std::exception & e){
+                PKUtils::PkError::printException(e);
+            });
+        }
     }
 }
