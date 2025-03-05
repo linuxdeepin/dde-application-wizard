@@ -81,7 +81,7 @@ void postUninstallCleanUp(const QString & desktopId)
 void Launcher1Compat::uninstallPackageKitPackage(const QString & pkgDisplayName, const QString & pkPackageId)
 {
     qDebug() << "Uninstall" << pkPackageId << "via PackageKit";
-    PKUtils::removePackage(pkPackageId).then([=](){
+    PKUtils::removePackage(pkPackageId).then([=, this](){
         sendNotification(pkgDisplayName, true);
         QFileInfo fi(m_desktopFilePath);
         // FIXME: THIS IS NOT DESKTOP ID
@@ -90,6 +90,29 @@ void Launcher1Compat::uninstallPackageKitPackage(const QString & pkgDisplayName,
         sendNotification(pkgDisplayName, false);
         PKUtils::PkError::printException(e);
     });
+}
+
+void Launcher1Compat::uninstallDCMPackage(const QString & pkgDisplayName, const QString & uninstallCmd)
+{
+    qDebug() << "Uninstall DCM package" << pkgDisplayName << "via uninstallCmd";
+
+    const QStringList args = uninstallCmd.split(' ');
+    // run `pkexec args` and wait for finish
+    QProcess process;
+    // set SUDO_USER environment variable to the user name that current process is running as, as required by DCM's cli util.
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("SUDO_USER", QString::fromLocal8Bit(qgetenv("USER")));
+    process.setProcessEnvironment(env);
+    process.start("pkexec", args);
+    process.waitForFinished();
+    if (process.exitCode() != 0) {
+        sendNotification(pkgDisplayName, false);
+    } else {
+        sendNotification(pkgDisplayName, true);
+        QFileInfo fi(m_desktopFilePath);
+        // FIXME: THIS IS NOT DESKTOP ID
+        postUninstallCleanUp(fi.fileName());
+    }
 }
 
 void Launcher1Compat::uninstallPackageByScript(const QString & pkgDisplayName, const QString & packageDesktopFilePath)
@@ -169,6 +192,37 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
     // TODO: check if it's a flatpak or snap bundle and do the uninstallation?
     } else {
         m_packageDisplayName = desktopEntry.name();
+
+        const QString compatibleDesktopJsonPath("/var/lib/deepin-compatible/compatibleDesktop.json");
+        if (QFile::exists(compatibleDesktopJsonPath)) {
+            qDebug() << "Found compatibleDesktop.json, checking if" << m_packageDisplayName << "is a compatible-mode application.";
+            // the json uses the following format:
+            // {
+            //     "environment-name-package-name": {
+            //          ...,
+            //          "RemoveCommand": "deepin-compatible-ctl app --name environment-name remove -- package-name"
+            //     },
+            //     "environment-name2-package-name2": {...},
+            //     ...
+            // }
+            // Check if desktopFilePath's file name (without `.desktop` suffix) is in the json file. If so, execute the 
+            // RemoveCommand via `pkexec`.
+            QFile jsonFile(compatibleDesktopJsonPath);
+            if (jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonFile.readAll());
+                if (jsonDoc.isObject()) {
+                    QJsonObject jsonObj = jsonDoc.object();
+                    for (const QString & key : jsonObj.keys()) {
+                        if (!desktopFilePath.endsWith(key + ".desktop")) continue;
+                        QJsonObject obj = jsonObj.value(key).toObject();
+                        QString removeCommand = obj.value("RemoveCommand").toString();
+                        qDebug() << "Found compatible desktop entry" << m_packageDisplayName << "in" << compatibleDesktopJsonPath;
+                        uninstallDCMPackage(m_packageDisplayName, removeCommand);
+                        return;
+                    }
+                }
+            }
+        }
 
         // Uninstall regular package via PackageKit or deepin-store
         if (QFile::exists("/run/ostree-booted")) {

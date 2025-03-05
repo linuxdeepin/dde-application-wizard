@@ -32,6 +32,7 @@ private:
     explicit Launcher1Compat(QObject *parent = nullptr);
 
     void uninstallPackageKitPackage(const QString & pkgDisplayName, const QString & pkPackageId);
+    void uninstallDCMPackage(const QString & pkgDisplayName, const QString & uninstallCmd);
     void uninstallPackageByScript(const QString & pkgDisplayName, const QString & packageDesktopFilePath);
 
     Launcher1Adaptor * m_daemonLauncher1Adapter;
