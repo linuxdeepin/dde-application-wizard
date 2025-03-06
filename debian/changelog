@@ -1,3 +1,10 @@
+dde-application-wizard (0.1.12) unstable; urgency=medium
+
+  * i18n: Translations update from Hosted Weblate
+  * feat: support deepin-compatible-mode uninstallation
+
+ -- Wang Zichong <wangzichong@deepin.org>  Thu, 06 Mar 2025 20:03:00 +0800
+
 dde-application-wizard (0.1.11) unstable; urgency=medium
 
   * Fix uninstall on ostree-booted environment
