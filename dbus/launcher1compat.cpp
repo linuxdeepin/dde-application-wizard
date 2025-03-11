@@ -96,13 +96,14 @@ void Launcher1Compat::uninstallDCMPackage(const QString & pkgDisplayName, const 
 {
     qDebug() << "Uninstall DCM package" << pkgDisplayName << "via uninstallCmd";
 
-    const QStringList args = uninstallCmd.split(' ');
     // run `pkexec args` and wait for finish
+    QStringList args = uninstallCmd.split(' ');
     QProcess process;
-    // set SUDO_USER environment variable to the user name that current process is running as, as required by DCM's cli util.
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("SUDO_USER", QString::fromLocal8Bit(qgetenv("USER")));
     process.setProcessEnvironment(env);
+    args.prepend("SUDO_USER=" + QString::fromLocal8Bit(qgetenv("USER")));
+    args.prepend("env");
+    
     process.start("pkexec", args);
     process.waitForFinished();
     if (process.exitCode() != 0) {
