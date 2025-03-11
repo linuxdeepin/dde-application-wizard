@@ -1,3 +1,9 @@
+dde-application-wizard (0.1.13) unstable; urgency=medium
+
+  * fix: Uninstalling compatibility mode application failed
+
+ -- Lv Peilong <lvpeilong@uniontech.com>  Tue, 11 Mar 2025 15:51:58 +0800
+
 dde-application-wizard (0.1.12) unstable; urgency=medium
 
   * i18n: Translations update from Hosted Weblate
