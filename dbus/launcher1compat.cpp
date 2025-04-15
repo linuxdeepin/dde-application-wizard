@@ -121,7 +121,7 @@ void Launcher1Compat::uninstallPackageByScript(const QString & pkgDisplayName, c
     // call `/usr/libexec/dde-appwiz-uninstaller.sh <packageDesktopFilePath>` and check the return code.
     qDebug() << "Calling dde-appwiz-uninstaller.sh to uninstall" << pkgDisplayName << packageDesktopFilePath << "via script";
     QProcess process;
-    process.start("/usr/libexec/dde-appwiz-uninstaller.sh", QStringList{packageDesktopFilePath});
+    process.start("pkexec", QStringList{"/usr/libexec/dde-appwiz-uninstaller.sh", packageDesktopFilePath});
     process.waitForFinished();
 
     QString standardOutput = process.readAllStandardOutput();

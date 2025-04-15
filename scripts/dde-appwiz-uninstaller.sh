@@ -27,8 +27,15 @@ if [ -z "$PACKAGE_NAME" ]; then
     exit 1
 fi
 
+# Check if the user is root, if not, use pkexec
+if [ "$EUID" -eq 0 ]; then
+    apt_command="apt purge -y"
+else
+    apt_command="pkexec apt purge -y"
+fi
+
 # Use pkexec to uninstall the package
-if pkexec apt purge -y "$PACKAGE_NAME"; then
+if $apt_command "$PACKAGE_NAME"; then
     echo "Package '$PACKAGE_NAME' has been successfully uninstalled."
 else
     echo "Error: Failed to uninstall the package '$PACKAGE_NAME'."
