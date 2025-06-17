@@ -175,6 +175,38 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
         return;
     }
 
+    if (!desktopEntry.stringValue("X-Deepin-PreUninstall").isEmpty()) {
+        QFileInfo desktopFileInfo(desktopFilePath);
+        bool writable = desktopFileInfo.isWritable();
+        if (writable) {
+            qDebug() << "Desktop file" << desktopFilePath << "is writable, it might be a user-level .desktop file, avoiding execute the PreUninstall command.";
+        } else {
+            const QString & preUninstallScript = desktopEntry.stringValue("X-Deepin-PreUninstall");
+            // The script is usually a shell script, we need to execute it and check the return code.
+            // We don't need pkexec, execute it directly.
+            // If error, we should print the stderr and return.
+            QStringList args = QProcess::splitCommand(preUninstallScript);
+            QProcess process;
+            if (args.size() < 1) {
+                qDebug() << "Pre-uninstall script" << preUninstallScript << "is invalid, aborting uninstallation for" << desktopFilePath;
+                return;
+            } else if (args.size() == 1) {
+                process.start(args[0]);
+            } else {
+                process.start(args[0], args.mid(1));
+            }
+            process.waitForFinished();
+            if (process.exitCode() != 0) {
+                qDebug() << "Pre-uninstall script" << preUninstallScript << "exited with exit code:" << process.exitCode() << process.error();
+                qDebug() << "stderr:" << process.readAllStandardError();
+                qDebug() << "stdout:" << process.readAllStandardOutput();
+                qDebug() << "Aborting uninstallation for" << desktopFilePath;
+                return;
+            }
+            qDebug() << "Pre-uninstall script" << preUninstallScript << "succeeded.";
+        }
+    }
+
     // Check and do uninstallation
     if (desktopFilePath.contains("/persistent/linglong") || desktopFilePath.contains("/var/lib/linglong")) {
         // Uninstall Linglong Bundle
