@@ -213,18 +213,18 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
         bool succ = uninstallLinglongBundle(desktopEntry);
         if (!succ) {
             emit UninstallFailed(desktopFilePath, QString());
-            sendNotification(desktopEntry.name(), false);
+            sendNotification(desktopEntry.ddeDisplayName(), false);
         } else {
             // FIXME: the filename of the desktop file MIGHT NOT be its desktopId in freedesktop spec.
             //        here is the logic from the legacy dde-application-manager which is INCORRECT in that case.
             QFileInfo fileInfo(desktopFilePath);
             postUninstallCleanUp(fileInfo.fileName());
             emit UninstallSuccess(desktopFilePath);
-            sendNotification(desktopEntry.name(), true);
+            sendNotification(desktopEntry.ddeDisplayName(), true);
         }
     // TODO: check if it's a flatpak or snap bundle and do the uninstallation?
     } else {
-        m_packageDisplayName = desktopEntry.name();
+        m_packageDisplayName = desktopEntry.ddeDisplayName();
 
         const QString compatibleDesktopJsonPath("/var/lib/deepin-compatible/compatibleDesktop.json");
         if (QFile::exists(compatibleDesktopJsonPath)) {
