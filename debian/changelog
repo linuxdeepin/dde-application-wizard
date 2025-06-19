@@ -1,3 +1,11 @@
+dde-application-wizard (0.1.15) unstable; urgency=medium
+
+  * fix: use ddeDisplayName instead of name for notifications
+  * feat: support X-Deepin-PreUninstall for deepin-wine
+  * i18n: Translations update from Hosted Weblate (#38)
+
+ -- YeShanShan <yeshanshan@uniontech.com>  Thu, 19 Jun 2025 11:20:52 +0800
+
 dde-application-wizard (0.1.14) unstable; urgency=medium
 
   * chore: change polkit rule from packagekit to appwiz's script
