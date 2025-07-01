@@ -103,7 +103,7 @@ void Launcher1Compat::uninstallDCMPackage(const QString & pkgDisplayName, const 
     process.setProcessEnvironment(env);
     args.prepend("SUDO_USER=" + QString::fromLocal8Bit(qgetenv("USER")));
     args.prepend("env");
-    
+
     process.start("pkexec", args);
     process.waitForFinished();
     if (process.exitCode() != 0) {
@@ -195,8 +195,8 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
             } else {
                 process.start(args[0], args.mid(1));
             }
-            process.waitForFinished();
-            if (process.exitCode() != 0) {
+            bool succ = process.waitForFinished(-1);
+            if (!succ || process.exitCode() != 0) {
                 qDebug() << "Pre-uninstall script" << preUninstallScript << "exited with exit code:" << process.exitCode() << process.error();
                 qDebug() << "stderr:" << process.readAllStandardError();
                 qDebug() << "stdout:" << process.readAllStandardOutput();
@@ -238,7 +238,7 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
             //     "environment-name2-package-name2": {...},
             //     ...
             // }
-            // Check if desktopFilePath's file name (without `.desktop` suffix) is in the json file. If so, execute the 
+            // Check if desktopFilePath's file name (without `.desktop` suffix) is in the json file. If so, execute the
             // RemoveCommand via `pkexec`.
             QFile jsonFile(compatibleDesktopJsonPath);
             if (jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
