@@ -1,3 +1,9 @@
+dde-application-wizard (0.1.16) unstable; urgency=medium
+
+  * fix: pre-uninstall hook waitForFinished shouldn't timeout after 30s
+
+ -- WuJiangYu <wujiangyu@uniontech.com>  Thu, 03 Jul 2025 17:13:02 +0800
+
 dde-application-wizard (0.1.15) unstable; urgency=medium
 
   * fix: use ddeDisplayName instead of name for notifications
