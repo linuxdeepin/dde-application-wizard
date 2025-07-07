@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -12,6 +12,12 @@
 
 // PackageKit-Qt
 #include <Daemon>
+
+// Qt Threading
+#include <QThreadPool>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QPointer>
 
 // Ends with a slash, this is the install prefix for the trusted launcher app.
 // For package maintianers, if your distro install binaries to weird locations,
@@ -78,21 +84,33 @@ void postUninstallCleanUp(const QString & desktopId)
     // TODO: the legacy dde-application-manager didn't do this
 }
 
-void Launcher1Compat::uninstallPackageKitPackage(const QString & pkgDisplayName, const QString & pkPackageId)
+void UninstallTask::uninstallPackageKitPackage(const QString & pkgDisplayName, const QString & pkPackageId, const QString & desktopFilePath)
 {
     qDebug() << "Uninstall" << pkPackageId << "via PackageKit";
-    PKUtils::removePackage(pkPackageId).then([=, this](){
-        sendNotification(pkgDisplayName, true);
-        QFileInfo fi(m_desktopFilePath);
-        // FIXME: THIS IS NOT DESKTOP ID
-        postUninstallCleanUp(fi.fileName());
-    }, [=](const std::exception & e){
-        sendNotification(pkgDisplayName, false);
-        PKUtils::PkError::printException(e);
+
+    // Use QPointer to safely capture this
+    QPointer<UninstallTask> self(this);
+
+    PKUtils::removePackage(pkPackageId).then([pkgDisplayName, desktopFilePath, self](){
+        if (self) {
+            sendNotification(pkgDisplayName, true);
+            QFileInfo fi(desktopFilePath);
+            // FIXME: THIS IS NOT DESKTOP ID
+            postUninstallCleanUp(fi.fileName());
+            emit self->uninstallSuccess(desktopFilePath);
+            self->finishTask();
+        }
+    }, [pkgDisplayName, desktopFilePath, self](const std::exception & e){
+        if (self) {
+            sendNotification(pkgDisplayName, false);
+            PKUtils::PkError::printException(e);
+            emit self->uninstallFailed(desktopFilePath, QString::fromStdString(e.what()));
+            self->finishTask();
+        }
     });
 }
 
-void Launcher1Compat::uninstallDCMPackage(const QString & pkgDisplayName, const QString & uninstallCmd)
+void UninstallTask::uninstallDCMPackage(const QString & pkgDisplayName, const QString & uninstallCmd, const QString & desktopFilePath)
 {
     qDebug() << "Uninstall DCM package" << pkgDisplayName << "via uninstallCmd";
 
@@ -108,15 +126,18 @@ void Launcher1Compat::uninstallDCMPackage(const QString & pkgDisplayName, const 
     process.waitForFinished();
     if (process.exitCode() != 0) {
         sendNotification(pkgDisplayName, false);
+        emit uninstallFailed(desktopFilePath, QString("DCM package uninstall failed"));
     } else {
         sendNotification(pkgDisplayName, true);
-        QFileInfo fi(m_desktopFilePath);
+        QFileInfo fi(desktopFilePath);
         // FIXME: THIS IS NOT DESKTOP ID
         postUninstallCleanUp(fi.fileName());
+        emit uninstallSuccess(desktopFilePath);
     }
+    finishTask();
 }
 
-void Launcher1Compat::uninstallPackageByScript(const QString & pkgDisplayName, const QString & packageDesktopFilePath)
+void UninstallTask::uninstallPackageByScript(const QString & pkgDisplayName, const QString & packageDesktopFilePath)
 {
     // call `/usr/libexec/dde-appwiz-uninstaller.sh <packageDesktopFilePath>` and check the return code.
     qDebug() << "Calling dde-appwiz-uninstaller.sh to uninstall" << pkgDisplayName << packageDesktopFilePath << "via script";
@@ -131,18 +152,22 @@ void Launcher1Compat::uninstallPackageByScript(const QString & pkgDisplayName, c
 
     if (process.exitCode() != 0) {
         sendNotification(pkgDisplayName, false);
+        emit uninstallFailed(packageDesktopFilePath, standardError);
     } else {
         sendNotification(pkgDisplayName, true);
-        QFileInfo fi(m_desktopFilePath);
+        QFileInfo fi(packageDesktopFilePath);
         // FIXME: THIS IS NOT DESKTOP ID
         postUninstallCleanUp(fi.fileName());
+        emit uninstallSuccess(packageDesktopFilePath);
     }
+    finishTask();
 }
 
 // the 1st argument is the full path of a desktop file.
 void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
 {
     Q_UNUSED(unused)
+    qDebug() << "request hitted" << desktop;
 
     // TODO: If we go with packagekit, it will ask user to input the password to uninstall application.
     //       Thus this checking will be no longer necessary. We still need this check since we are
@@ -159,19 +184,35 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
     }
 #endif // !QT_DEBUG
 
-    m_desktopFilePath = desktop;
+    // Create a new task and submit it to thread pool for concurrent processing
+    UninstallTask *task = new UninstallTask(desktop, this);
+    connect(task, &UninstallTask::uninstallSuccess, this, &Launcher1Compat::UninstallSuccess);
+    connect(task, &UninstallTask::uninstallFailed, this, &Launcher1Compat::UninstallFailed);
+
+    task->setAutoDelete(false);
+    QThreadPool::globalInstance()->start(task);
+}
+
+UninstallTask::UninstallTask(const QString &desktop, Launcher1Compat *parent)
+    : m_desktopFilePath(desktop), m_parent(parent)
+{
+}
+
+void UninstallTask::run()
+{
+    qDebug() << "Processing uninstall task for" << m_desktopFilePath;
 
     // Check if passed file is valid
-    QFileInfo desktopFileInfo(desktop);
+    QFileInfo desktopFileInfo(m_desktopFilePath);
     if (!desktopFileInfo.exists()) {
-        qDebug() << "File" << desktop << "doesn't exist.";
+        qDebug() << "File" << m_desktopFilePath << "doesn't exist.";
         return;
     }
 
-    QString desktopFilePath(desktopFileInfo.isSymLink() ? desktopFileInfo.symLinkTarget() : desktop);
+    QString desktopFilePath(desktopFileInfo.isSymLink() ? desktopFileInfo.symLinkTarget() : m_desktopFilePath);
     DDesktopEntry desktopEntry(desktopFilePath);
     if (desktopEntry.status() != DDesktopEntry::NoError) {
-        qDebug() << "Desktop file" << desktop << "is invalid.";
+        qDebug() << "Desktop file" << m_desktopFilePath << "is invalid.";
         return;
     }
 
@@ -197,13 +238,25 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
             }
             bool succ = process.waitForFinished(-1);
             if (!succ || process.exitCode() != 0) {
-                qDebug() << "Pre-uninstall script" << preUninstallScript << "exited with exit code:" << process.exitCode() << process.error();
-                qDebug() << "stderr:" << process.readAllStandardError();
-                qDebug() << "stdout:" << process.readAllStandardOutput();
-                qDebug() << "Aborting uninstallation for" << desktopFilePath;
-                return;
+                int exitCode = process.exitCode();
+                qDebug() << "Pre-uninstall script" << preUninstallScript << "exited with exit code:" << exitCode << process.error();
+                switch (exitCode) {
+                case 101:
+                    qDebug() << "Which means user canceled uninstallation for" << desktopFilePath;
+                    qDebug() << "Thus aborting the uninstallation.";
+                    return;
+                case 103:
+                    qDebug() << "Which means there is a running instance of the pre-uninstall script for" << desktopFilePath;
+                    qDebug() << "Thus aborting the uninstallation.";
+                    return;
+                default:
+                    qDebug() << "stderr:" << process.readAllStandardError();
+                    qDebug() << "stdout:" << process.readAllStandardOutput();
+                    qDebug() << "Will continue uninstallation for" << desktopFilePath;
+                }
+            } else {
+                qDebug() << "Pre-uninstall script" << preUninstallScript << "succeeded.";
             }
-            qDebug() << "Pre-uninstall script" << preUninstallScript << "succeeded.";
         }
     }
 
@@ -212,23 +265,24 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
         // Uninstall Linglong Bundle
         bool succ = uninstallLinglongBundle(desktopEntry);
         if (!succ) {
-            emit UninstallFailed(desktopFilePath, QString());
+            emit uninstallFailed(desktopFilePath, QString());
             sendNotification(desktopEntry.ddeDisplayName(), false);
         } else {
             // FIXME: the filename of the desktop file MIGHT NOT be its desktopId in freedesktop spec.
             //        here is the logic from the legacy dde-application-manager which is INCORRECT in that case.
             QFileInfo fileInfo(desktopFilePath);
             postUninstallCleanUp(fileInfo.fileName());
-            emit UninstallSuccess(desktopFilePath);
+            emit uninstallSuccess(desktopFilePath);
             sendNotification(desktopEntry.ddeDisplayName(), true);
         }
+        finishTask();
     // TODO: check if it's a flatpak or snap bundle and do the uninstallation?
     } else {
-        m_packageDisplayName = desktopEntry.ddeDisplayName();
+        QString packageDisplayName = desktopEntry.ddeDisplayName();
 
         const QString compatibleDesktopJsonPath("/var/lib/deepin-compatible/compatibleDesktop.json");
         if (QFile::exists(compatibleDesktopJsonPath)) {
-            qDebug() << "Found compatibleDesktop.json, checking if" << m_packageDisplayName << "is a compatible-mode application.";
+            qDebug() << "Found compatibleDesktop.json, checking if" << packageDisplayName << "is a compatible-mode application.";
             // the json uses the following format:
             // {
             //     "environment-name-package-name": {
@@ -249,8 +303,8 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
                         if (!desktopFilePath.endsWith(key + ".desktop")) continue;
                         QJsonObject obj = jsonObj.value(key).toObject();
                         QString removeCommand = obj.value("RemoveCommand").toString();
-                        qDebug() << "Found compatible desktop entry" << m_packageDisplayName << "in" << compatibleDesktopJsonPath;
-                        uninstallDCMPackage(m_packageDisplayName, removeCommand);
+                        qDebug() << "Found compatible desktop entry" << packageDisplayName << "in" << compatibleDesktopJsonPath;
+                        uninstallDCMPackage(packageDisplayName, removeCommand, desktopFilePath);
                         return;
                     }
                 }
@@ -259,22 +313,39 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
 
         // Uninstall regular package via PackageKit or deepin-store
         if (QFile::exists("/run/ostree-booted")) {
-            uninstallPackageByScript(m_packageDisplayName, desktopFilePath);
+            uninstallPackageByScript(packageDisplayName, desktopFilePath);
         } else {
             // call PackageKit to uninstall
-            PKUtils::searchFiles(desktopFilePath, PackageKit::Transaction::FilterInstalled).then([this](const PKUtils::PkPackages packages) {
+            QPointer<UninstallTask> self(this);
+            PKUtils::searchFiles(desktopFilePath, PackageKit::Transaction::FilterInstalled).then([self, packageDisplayName, desktopFilePath](const PKUtils::PkPackages packages) {
+                if (!self) return;
+
                 if (packages.size() == 0) {
                     qDebug() << "No matching package found";
+                    emit self->uninstallFailed(desktopFilePath, QString("No matching package found"));
+                    self->finishTask();
                     return;
                 }
                 for (const PKUtils::PkPackage & pkg : packages) {
                     QString pkgId;
                     std::tie(std::ignore, pkgId, std::ignore) = pkg;
-                    uninstallPackageKitPackage(m_packageDisplayName, pkgId);
+                    self->uninstallPackageKitPackage(packageDisplayName, pkgId, desktopFilePath);
                 }
-            }, [](const std::exception & e){
+            }, [self, desktopFilePath](const std::exception & e){
+                if (!self) return;
                 PKUtils::PkError::printException(e);
+                emit self->uninstallFailed(desktopFilePath, QString::fromStdString(e.what()));
+                self->finishTask();
             });
         }
     }
+}
+
+void UninstallTask::finishTask()
+{
+    qDebug() << "Finishing uninstall task for" << m_desktopFilePath;
+    // Schedule deletion in the main thread
+    QMetaObject::invokeMethod(this, [this](){
+        this->deleteLater();
+    }, Qt::QueuedConnection);
 }
