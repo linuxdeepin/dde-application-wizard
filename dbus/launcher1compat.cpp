@@ -140,10 +140,8 @@ void Launcher1Compat::uninstallPackageByScript(const QString & pkgDisplayName, c
 }
 
 // the 1st argument is the full path of a desktop file.
-void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
+void Launcher1Compat::RequestUninstall(const QString & desktop, bool skipPreinstallHook)
 {
-    Q_UNUSED(unused)
-
     // TODO: If we go with packagekit, it will ask user to input the password to uninstall application.
     //       Thus this checking will be no longer necessary. We still need this check since we are
     //       still using lastore to uninstall package if it exists.
@@ -175,7 +173,7 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool unused)
         return;
     }
 
-    if (!desktopEntry.stringValue("X-Deepin-PreUninstall").isEmpty()) {
+    if (!skipPreinstallHook && !desktopEntry.stringValue("X-Deepin-PreUninstall").isEmpty()) {
         QFileInfo desktopFileInfo(desktopFilePath);
         bool writable = desktopFileInfo.isWritable();
         if (writable) {
