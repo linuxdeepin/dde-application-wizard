@@ -22,7 +22,7 @@ public:
 
 // Launcher1Adapter
 public:
-    void RequestUninstall(const QString &desktop, bool unused);
+    void RequestUninstall(const QString &desktop, bool skipPreinstallHook);
 
 signals:
     void UninstallFailed(const QString &appId, const QString &errMsg);
