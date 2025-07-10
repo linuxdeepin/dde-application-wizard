@@ -1,3 +1,9 @@
+dde-application-wizard (0.1.18) unstable; urgency=medium
+
+  * chore: able to mark if we should skip preuninstall hook
+
+ -- WuJiangYu <wujiangyu@uniontech.com>  Thu, 10 Jul 2025 20:15:27 +0800
+
 dde-application-wizard (0.1.17) unstable; urgency=medium
 
   * fix: add hardening compiler flags in Debian build
