@@ -6,12 +6,12 @@
     <message>
         <location filename="../dbus/launcher1compat.cpp" line="41"/>
         <source>%1 removed successfully</source>
-        <translation type="unfinished"></translation>
+        <translation>%1 removido com sucesso</translation>
     </message>
     <message>
         <location filename="../dbus/launcher1compat.cpp" line="43"/>
         <source>Failed to remove the app</source>
-        <translation type="unfinished"></translation>
+        <translation>A remoção da app falhou</translation>
     </message>
 </context>
 </TS>
