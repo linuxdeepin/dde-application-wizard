@@ -1,3 +1,9 @@
+dde-application-wizard (0.1.19) unstable; urgency=medium
+
+  * feat: add application icon support for uninstall notifications
+
+ -- wujiangyu <wujiangyu@uniontech.com>  Thu, 21 Aug 2025 17:25:17 +0800
+
 dde-application-wizard (0.1.18) unstable; urgency=medium
 
   * chore: able to mark if we should skip preuninstall hook
