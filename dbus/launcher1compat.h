@@ -40,5 +40,6 @@ private:
     // TODO: vvv This is bad, refactor this later vvv
     QString m_packageDisplayName;
     QString m_desktopFilePath;
+    QString m_base64Icon;
     // TODO: ^^^ -------------------------------- ^^^
 };
