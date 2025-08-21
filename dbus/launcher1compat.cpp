@@ -13,6 +13,12 @@
 // PackageKit-Qt
 #include <Daemon>
 
+// Qt includes for QIcon to base64 conversion
+#include <QIcon>
+#include <QPixmap>
+#include <QBuffer>
+#include <QByteArray>
+
 // Ends with a slash, this is the install prefix for the trusted launcher app.
 // For package maintianers, if your distro install binaries to weird locations,
 // you can patch this to a empty string.
@@ -21,6 +27,34 @@
 #define BINDIR_PREFIX "/usr/bin/"
 
 DCORE_USE_NAMESPACE
+
+QString qIconToBase64(const QIcon &icon)
+{
+    if (icon.isNull()) {
+        return QString();
+    }
+    
+    QPixmap pixmap = icon.pixmap(24, 24);
+    if (pixmap.isNull()) {
+        return QString();
+    }
+    
+    // 转换为PNG格式的字节数组
+    QByteArray byteArray;
+    QBuffer buffer(&byteArray);
+    buffer.open(QIODevice::WriteOnly);
+    
+    if (!pixmap.save(&buffer, "PNG")) {
+        qDebug() << "Failed to save pixmap to PNG format";
+        return QString();
+    }
+    
+    // 转换为base64 data URI
+    QString base64Data = byteArray.toBase64();
+    QString dataUri = QString("data:image/png;base64,%1").arg(base64Data);
+    
+    return dataUri;
+}
 
 Launcher1Compat::Launcher1Compat(QObject *parent)
     : QObject(parent)
@@ -34,7 +68,7 @@ Launcher1Compat::~Launcher1Compat()
     // TODO
 }
 
-void sendNotification(const QString & displayName, bool successed)
+void sendNotification(const QString & displayName, bool successed, const QString & iconName = "application-default-icon")
 {
     QString msg;
     if (successed) {
@@ -44,7 +78,7 @@ void sendNotification(const QString & displayName, bool successed)
     }
 
     DUtil::DNotifySender notifySender(msg);
-    notifySender = notifySender.appName("deepin-app-store").appIcon("application-default-icon").timeOut(5000);
+    notifySender = notifySender.appName("deepin-app-store").appIcon(iconName).timeOut(5000);
     notifySender.call();
 }
 
@@ -82,12 +116,12 @@ void Launcher1Compat::uninstallPackageKitPackage(const QString & pkgDisplayName,
 {
     qDebug() << "Uninstall" << pkPackageId << "via PackageKit";
     PKUtils::removePackage(pkPackageId).then([=, this](){
-        sendNotification(pkgDisplayName, true);
+        sendNotification(pkgDisplayName, true, m_base64Icon);
         QFileInfo fi(m_desktopFilePath);
         // FIXME: THIS IS NOT DESKTOP ID
         postUninstallCleanUp(fi.fileName());
     }, [=](const std::exception & e){
-        sendNotification(pkgDisplayName, false);
+        sendNotification(pkgDisplayName, false, m_base64Icon);
         PKUtils::PkError::printException(e);
     });
 }
@@ -107,9 +141,9 @@ void Launcher1Compat::uninstallDCMPackage(const QString & pkgDisplayName, const 
     process.start("pkexec", args);
     process.waitForFinished();
     if (process.exitCode() != 0) {
-        sendNotification(pkgDisplayName, false);
+        sendNotification(pkgDisplayName, false, m_base64Icon);
     } else {
-        sendNotification(pkgDisplayName, true);
+        sendNotification(pkgDisplayName, true, m_base64Icon);
         QFileInfo fi(m_desktopFilePath);
         // FIXME: THIS IS NOT DESKTOP ID
         postUninstallCleanUp(fi.fileName());
@@ -130,9 +164,9 @@ void Launcher1Compat::uninstallPackageByScript(const QString & pkgDisplayName, c
     qDebug() << "stderr:" << standardError;
 
     if (process.exitCode() != 0) {
-        sendNotification(pkgDisplayName, false);
+        sendNotification(pkgDisplayName, false, m_base64Icon);
     } else {
-        sendNotification(pkgDisplayName, true);
+        sendNotification(pkgDisplayName, true, m_base64Icon);
         QFileInfo fi(m_desktopFilePath);
         // FIXME: THIS IS NOT DESKTOP ID
         postUninstallCleanUp(fi.fileName());
@@ -173,6 +207,19 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool skipPreinst
         return;
     }
 
+    // 获取应用图标信息
+    QString appIconName = desktopEntry.stringValue("Icon");
+    if (appIconName.isEmpty()) {
+        qDebug() << "use default icon";
+        m_base64Icon = "application-default-icon";
+    } else {
+        QIcon appIcon = QIcon::fromTheme(appIconName);
+        if(appIcon.isNull()) {
+            m_base64Icon = "application-default-icon";
+        }
+        m_base64Icon = qIconToBase64(appIcon);
+    }
+
     if (!skipPreinstallHook && !desktopEntry.stringValue("X-Deepin-PreUninstall").isEmpty()) {
         QFileInfo desktopFileInfo(desktopFilePath);
         bool writable = desktopFileInfo.isWritable();
@@ -211,14 +258,14 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool skipPreinst
         bool succ = uninstallLinglongBundle(desktopEntry);
         if (!succ) {
             emit UninstallFailed(desktopFilePath, QString());
-            sendNotification(desktopEntry.ddeDisplayName(), false);
+            sendNotification(desktopEntry.ddeDisplayName(), false, m_base64Icon);
         } else {
             // FIXME: the filename of the desktop file MIGHT NOT be its desktopId in freedesktop spec.
             //        here is the logic from the legacy dde-application-manager which is INCORRECT in that case.
             QFileInfo fileInfo(desktopFilePath);
             postUninstallCleanUp(fileInfo.fileName());
             emit UninstallSuccess(desktopFilePath);
-            sendNotification(desktopEntry.ddeDisplayName(), true);
+            sendNotification(desktopEntry.ddeDisplayName(), true, m_base64Icon);
         }
     // TODO: check if it's a flatpak or snap bundle and do the uninstallation?
     } else {
