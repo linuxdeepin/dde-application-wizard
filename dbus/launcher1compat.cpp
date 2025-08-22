@@ -92,15 +92,21 @@ bool uninstallLinglongBundle(const DDesktopEntry & entry)
     return retCode == 0;
 }
 
-void postUninstallCleanUp(const QString & desktopId)
+void postUninstallCleanUp(const QString & desktopId, PackageType packageType)
 {
     // Remove the shortcut that we created at user's desktop
     const QString &curDesktop = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
     const QString &appDesktopPath = curDesktop + "/" + desktopId;
-
     QFile file(appDesktopPath);
     if (file.exists()) {
         file.remove();
+    } else if (packageType == PackageType::Linglong) {
+        // 只对玲珑包处理 linyaps 桌面文件
+        const QString &linyapsDesktopPath = curDesktop + "/linyaps-" + desktopId;
+        if (QFile(linyapsDesktopPath).exists()) {
+            qDebug() << linyapsDesktopPath << "exists, remove it";
+            QFile::remove(linyapsDesktopPath);
+        }
     } else {
         qDebug() << appDesktopPath << "doesn't exist, no need to remove.";
     }
@@ -119,7 +125,7 @@ void Launcher1Compat::uninstallPackageKitPackage(const QString & pkgDisplayName,
         sendNotification(pkgDisplayName, true, m_base64Icon);
         QFileInfo fi(m_desktopFilePath);
         // FIXME: THIS IS NOT DESKTOP ID
-        postUninstallCleanUp(fi.fileName());
+        postUninstallCleanUp(fi.fileName(), PackageType::Deb);
     }, [=](const std::exception & e){
         sendNotification(pkgDisplayName, false, m_base64Icon);
         PKUtils::PkError::printException(e);
@@ -146,7 +152,7 @@ void Launcher1Compat::uninstallDCMPackage(const QString & pkgDisplayName, const 
         sendNotification(pkgDisplayName, true, m_base64Icon);
         QFileInfo fi(m_desktopFilePath);
         // FIXME: THIS IS NOT DESKTOP ID
-        postUninstallCleanUp(fi.fileName());
+        postUninstallCleanUp(fi.fileName(), PackageType::DCM);
     }
 }
 
@@ -169,7 +175,7 @@ void Launcher1Compat::uninstallPackageByScript(const QString & pkgDisplayName, c
         sendNotification(pkgDisplayName, true, m_base64Icon);
         QFileInfo fi(m_desktopFilePath);
         // FIXME: THIS IS NOT DESKTOP ID
-        postUninstallCleanUp(fi.fileName());
+        postUninstallCleanUp(fi.fileName(), PackageType::Deb);
     }
 }
 
@@ -263,7 +269,7 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool skipPreinst
             // FIXME: the filename of the desktop file MIGHT NOT be its desktopId in freedesktop spec.
             //        here is the logic from the legacy dde-application-manager which is INCORRECT in that case.
             QFileInfo fileInfo(desktopFilePath);
-            postUninstallCleanUp(fileInfo.fileName());
+            postUninstallCleanUp(fileInfo.fileName(), PackageType::Linglong);
             emit UninstallSuccess(desktopFilePath);
             sendNotification(desktopEntry.ddeDisplayName(), true, m_base64Icon);
         }
