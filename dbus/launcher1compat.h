@@ -8,6 +8,13 @@
 #include <QDBusMessage>
 #include <QObject>
 
+enum class PackageType {
+    Linglong,   // 玲珑包
+    Flatpak,    // Flatpak包  
+    Deb,        // deb包/PackageKit包
+    DCM         // DCM兼容模式包
+};
+
 class Launcher1Adaptor;
 class Launcher1Compat : public QObject, protected QDBusContext
 {
