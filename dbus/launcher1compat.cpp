@@ -85,11 +85,12 @@ void sendNotification(const QString & displayName, bool successed, const QString
 bool uninstallLinglongBundle(const DDesktopEntry & entry)
 {
     const QString appId = entry.rawValue("Exec").section(' ', 2, 2);
-    const QStringList args {"uninstall", appId};
     QProcess process;
-
-    int retCode = QProcess::execute("ll-cli", args);
-    return retCode == 0;
+    qDebug() << "Uninstalling Linglong bundle" << appId << "via script";
+    process.start("pkexec", QStringList{"/usr/libexec/dde-appwiz-linglong-uninstaller.sh", appId});
+    process.waitForFinished();
+    
+    return process.exitCode() == 0;
 }
 
 void postUninstallCleanUp(const QString & desktopId)
