@@ -10,6 +10,9 @@
 #include <DNotifySender>
 #include <launcher1adaptor.h> // this is the adapter of daemon.Launcher1
 
+// Qt includes
+#include <QSet>
+
 // PackageKit-Qt
 #include <Daemon>
 
@@ -207,7 +210,41 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool skipPreinst
         return;
     }
 
-    QString desktopFilePath(desktopFileInfo.isSymLink() ? desktopFileInfo.symLinkTarget() : desktop);
+    QString desktopFilePath;
+    if (desktopFileInfo.isSymLink()) {
+        // Recursively resolve symlinks to get the final target
+        QString currentPath = desktop;
+        QSet<QString> visitedPaths; // Prevent infinite loops
+        
+        while (true) {
+            QFileInfo currentInfo(currentPath);
+            if (!currentInfo.isSymLink()) {
+                // Found the final target
+                desktopFilePath = currentPath;
+                break;
+            }
+            
+            QString symLinkTarget = currentInfo.symLinkTarget();
+            if (!QFile::exists(symLinkTarget)) {
+                qDebug() << "Symlink target" << symLinkTarget << "does not exist, using original path" << desktop;
+                desktopFilePath = desktop;
+                break;
+            }
+            
+            if (visitedPaths.contains(currentPath)) {
+                qDebug() << "Circular symlink detected, using original path" << desktop;
+                desktopFilePath = desktop;
+                break;
+            }
+            
+            visitedPaths.insert(currentPath);
+            currentPath = symLinkTarget;
+        }
+        
+        qDebug() << "Resolved symlink chain from" << desktop << "to" << desktopFilePath;
+    } else {
+        desktopFilePath = desktop;
+    }
     DDesktopEntry desktopEntry(desktopFilePath);
     if (desktopEntry.status() != DDesktopEntry::NoError) {
         qDebug() << "Desktop file" << desktop << "is invalid.";
@@ -275,6 +312,40 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool skipPreinst
             sendNotification(desktopEntry.ddeDisplayName(), true, m_base64Icon);
         }
     // TODO: check if it's a flatpak or snap bundle and do the uninstallation?
+    // 单独处理chrome 的快捷浏览器创建卸载
+    } else if (desktopFilePath.contains("/.local/share/applications/") && 
+               (desktopFilePath.contains("chrome-") || 
+                desktopEntry.stringValue("Exec").contains("google-chrome"))) {
+        // Handle Chrome PWA apps specifically
+        qDebug() << "Detected Chrome PWA application:" << desktopFilePath;
+        
+        bool success = true;
+        QString iconPath = desktopEntry.stringValue("Icon");
+        
+        // Remove the desktop file
+        QFile desktopFile(desktopFilePath);
+        if (!desktopFile.remove()) {
+            qDebug() << "Failed to remove Chrome PWA desktop file:" << desktopFilePath;
+            success = false;
+        }
+        
+        // Remove the associated icon if it's a file path
+        if (success && !iconPath.isEmpty() && QFile::exists(iconPath)) {
+            QFile iconFile(iconPath);
+            if (!iconFile.remove()) {
+                qDebug() << "Warning: Failed to remove Chrome PWA icon file:" << iconPath;
+            }
+        }
+        
+        if (success) {
+            QFileInfo fileInfo(desktopFilePath);
+            postUninstallCleanUp(fileInfo.fileName());
+            emit UninstallSuccess(desktopFilePath);
+            sendNotification(desktopEntry.ddeDisplayName(), true);
+        } else {
+            emit UninstallFailed(desktopFilePath, QString("Failed to remove Chrome PWA application"));
+            sendNotification(desktopEntry.ddeDisplayName(), false);
+        }
     } else {
         m_packageDisplayName = desktopEntry.ddeDisplayName();
 
