@@ -1,3 +1,10 @@
+dde-application-wizard (0.1.20) unstable; urgency=medium
+
+  * fix: prefix desktop filename with linyaps in uninstall cleanup
+  * feat: add Linglong uninstaller script support
+
+ -- wujiangyu <wujiangyu@uniontech.com>  Thu, 28 Aug 2025 17:52:28 +0800
+
 dde-application-wizard (0.1.19) unstable; urgency=medium
 
   * feat: add application icon support for uninstall notifications
