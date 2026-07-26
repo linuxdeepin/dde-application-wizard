@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -12,7 +12,8 @@ enum class PackageType {
     Linglong,   // 玲珑包
     Flatpak,    // Flatpak包  
     Deb,        // deb包/PackageKit包
-    DCM         // DCM兼容模式包
+    DCM,        // DCM兼容模式包
+    APM         // APM包
 };
 
 class Launcher1Adaptor;
@@ -41,6 +42,7 @@ private:
     void uninstallPackageKitPackage(const QString & pkgDisplayName, const QString & pkPackageId);
     void uninstallDCMPackage(const QString & pkgDisplayName, const QString & uninstallCmd);
     void uninstallPackageByScript(const QString & pkgDisplayName, const QString & packageDesktopFilePath);
+    void uninstallAPMPackage(const QString & pkgDisplayName, const QString & packageDesktopFilePath);
 
     Launcher1Adaptor * m_daemonLauncher1Adapter;
 

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: CC0-1.0
 
@@ -77,6 +77,7 @@ target_link_libraries(${BIN_NAME} PRIVATE
 install(TARGETS ${BIN_NAME} DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
 install(FILES scripts/dde-appwiz-uninstaller.sh DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
 install(FILES scripts/dde-appwiz-linglong-uninstaller.sh DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
+install(FILES scripts/dde-appwiz-apm-uninstaller.sh DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
 install(FILES polkit-1/actions/org.deepin.dde.appwiz.uninstall.policy DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
 install(FILES polkit-1/rules.d/org.deepin.dde.application-wizard.rules DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/rules.d)
 install(FILES ${TRANSLATED_FILES} DESTINATION ${CMAKE_INSTALL_DATADIR}/dde-application-wizard/translations)

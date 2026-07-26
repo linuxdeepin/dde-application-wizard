@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -88,7 +88,13 @@ bool uninstallLinglongBundle(const DDesktopEntry & entry)
     QProcess process;
     qDebug() << "Uninstalling Linglong bundle" << appId << "via script";
     process.start("pkexec", QStringList{"/usr/libexec/dde-appwiz-linglong-uninstaller.sh", appId});
-    process.waitForFinished();
+    
+    bool finished = process.waitForFinished(300000); // 5 minutes timeout
+    if (!finished) {
+        qDebug() << "Process timed out or failed to finish";
+        process.kill();
+        return false;
+    }
     
     return process.exitCode() == 0;
 }
@@ -146,7 +152,15 @@ void Launcher1Compat::uninstallDCMPackage(const QString & pkgDisplayName, const 
     args.prepend("env");
 
     process.start("pkexec", args);
-    process.waitForFinished();
+    
+    bool finished = process.waitForFinished(300000); // 5 minutes timeout
+    if (!finished) {
+        qDebug() << "Process timed out or failed to finish";
+        process.kill();
+        sendNotification(pkgDisplayName, false, m_base64Icon);
+        return;
+    }
+    
     if (process.exitCode() != 0) {
         sendNotification(pkgDisplayName, false, m_base64Icon);
     } else {
@@ -163,7 +177,14 @@ void Launcher1Compat::uninstallPackageByScript(const QString & pkgDisplayName, c
     qDebug() << "Calling dde-appwiz-uninstaller.sh to uninstall" << pkgDisplayName << packageDesktopFilePath << "via script";
     QProcess process;
     process.start("pkexec", QStringList{"/usr/libexec/dde-appwiz-uninstaller.sh", packageDesktopFilePath});
-    process.waitForFinished();
+    
+    bool finished = process.waitForFinished(300000); // 5 minutes timeout
+    if (!finished) {
+        qDebug() << "Process timed out or failed to finish";
+        process.kill();
+        sendNotification(pkgDisplayName, false, m_base64Icon);
+        return;
+    }
 
     QString standardOutput = process.readAllStandardOutput();
     QString standardError = process.readAllStandardError();
@@ -174,9 +195,39 @@ void Launcher1Compat::uninstallPackageByScript(const QString & pkgDisplayName, c
         sendNotification(pkgDisplayName, false, m_base64Icon);
     } else {
         sendNotification(pkgDisplayName, true, m_base64Icon);
-        QFileInfo fi(m_desktopFilePath);
+        QFileInfo fi(packageDesktopFilePath);
         // FIXME: THIS IS NOT DESKTOP ID
         postUninstallCleanUp(fi.fileName(), PackageType::Deb);
+    }
+}
+
+void Launcher1Compat::uninstallAPMPackage(const QString & pkgDisplayName, const QString & packageDesktopFilePath)
+{
+    // call `/usr/libexec/dde-appwiz-apm-uninstaller.sh <packageDesktopFilePath>` and check the return code.
+    qDebug() << "Calling dde-appwiz-apm-uninstaller.sh to uninstall" << pkgDisplayName << packageDesktopFilePath << "via script";
+    QProcess process;
+    process.start("pkexec", QStringList{"/usr/libexec/dde-appwiz-apm-uninstaller.sh", packageDesktopFilePath});
+    
+    bool finished = process.waitForFinished(300000); // 5 minutes timeout
+    if (!finished) {
+        qDebug() << "Process timed out or failed to finish";
+        process.kill();
+        sendNotification(pkgDisplayName, false, m_base64Icon);
+        return;
+    }
+
+    QString standardOutput = process.readAllStandardOutput();
+    QString standardError = process.readAllStandardError();
+    qDebug() << "stdout:" << standardOutput;
+    qDebug() << "stderr:" << standardError;
+
+    if (process.exitCode() != 0) {
+        sendNotification(pkgDisplayName, false, m_base64Icon);
+    } else {
+        sendNotification(pkgDisplayName, true, m_base64Icon);
+        QFileInfo fi(packageDesktopFilePath);
+        // FIXME: THIS IS NOT DESKTOP ID
+        postUninstallCleanUp(fi.fileName(), PackageType::APM);
     }
 }
 
@@ -259,6 +310,8 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool skipPreinst
         }
     }
 
+    m_packageDisplayName = desktopEntry.ddeDisplayName();
+
     // Check and do uninstallation
     if (desktopFilePath.contains("/persistent/linglong") || desktopFilePath.contains("/var/lib/linglong")) {
         // Uninstall Linglong Bundle
@@ -274,10 +327,11 @@ void Launcher1Compat::RequestUninstall(const QString & desktop, bool skipPreinst
             emit UninstallSuccess(desktopFilePath);
             sendNotification(desktopEntry.ddeDisplayName(), true, m_base64Icon);
         }
+    } else if (!desktopEntry.stringValue("X-APM-APPID").isEmpty()) {
+        // Uninstall APM Package
+        uninstallAPMPackage(m_packageDisplayName, desktopFilePath);
     // TODO: check if it's a flatpak or snap bundle and do the uninstallation?
     } else {
-        m_packageDisplayName = desktopEntry.ddeDisplayName();
-
         const QString compatibleDesktopJsonPath("/var/lib/deepin-compatible/compatibleDesktop.json");
         if (QFile::exists(compatibleDesktopJsonPath)) {
             qDebug() << "Found compatibleDesktop.json, checking if" << m_packageDisplayName << "is a compatible-mode application.";
