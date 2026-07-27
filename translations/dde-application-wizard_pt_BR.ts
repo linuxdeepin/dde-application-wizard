@@ -11,7 +11,7 @@
     <message>
         <location filename="../dbus/launcher1compat.cpp" line="43"/>
         <source>Failed to remove the app</source>
-        <translation>A remoção do aplicativo falhou</translation>
+        <translation>Falha ao remover o app</translation>
     </message>
 </context>
 </TS>
